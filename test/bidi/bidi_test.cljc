@@ -220,3 +220,18 @@
 
         result (route-seq ["" [myroutes]])]
     (is (= (count result) 3))))
+
+(deftest email-in-path-test
+  (testing "without regex"
+    (let [route [["/foo/" :email] :foo]]
+      (is (= (match-route route (path-for route :foo :email "aaaa"))
+             {:handler :foo
+              :route-params {:email "aaaa"}}))
+      (is (= (match-route route (path-for route :foo :email "aaaaa@example.com"))
+             {:handler :foo
+              :route-params {:email "aaaa"}}))))
+  (testing "with regex"
+    (let [route [["/foo/" [#".+\@.+\..+" :email]] :foo]]
+      (is (= (match-route route (path-for route :foo :email "aaaaa@example.com"))
+             {:handler :foo
+              :route-params {:email "aaaaa@example.com"}})))))
