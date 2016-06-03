@@ -146,6 +146,55 @@
       (is (= (path-for routes :temp-html)
              "/blog/temp.html")))))
 
+(deftest encoding-decoding
+  (let [routes ["/" [[["foo/" [keyword :id]] :x]
+                     [["bar/" [#".*" :id]] :y]]]]
+    (testing "no encoding needed"
+      (let [p (path-for routes :x :id :qux)]
+        (is (= p "/foo/qux"))
+        (is (= {:handler      :x
+                :route-params {:id :qux}}
+               (match-route routes p))))
+      (let [p (path-for routes :y :id "qux")]
+        (is (= p "/bar/qux"))
+        (is (= {:handler      :y
+                :route-params {:id "qux"}}
+               (match-route routes p)))))
+
+    (testing "encoding keywords"
+      (let [p (path-for routes :x :id :qux/quux)]
+        (is (= p "/foo/qux%2Fquux"))
+        (is (= {:handler      :x
+                :route-params {:id :qux/quux}}
+               (match-route routes p))))
+
+      (let [p (path-for routes :x :id :qux?quux)]
+        (is (= p "/foo/qux%3Fquux"))
+        (is (= {:handler      :x
+                :route-params {:id :qux?quux}}
+               (match-route routes p)))))
+
+    (testing "encoding strings"
+      (let [p (path-for routes :y :id "qux/quux")]
+        (is (= p "/bar/qux%2Fquux"))
+        (is (= {:handler      :y
+                :route-params {:id "qux/quux"}}
+               (match-route routes p))))
+
+      (let [p (path-for routes :y :id "qux?quux")]
+        (is (= p "/bar/qux%3Fquux"))
+        (is (= {:handler      :y
+                :route-params {:id "qux?quux"}}
+               (match-route routes p))))))
+
+  (testing "multiple regex params"
+    (let [routes ["/" [[["foo/" [#"[^/]*" :id] "/" [#".*" :path]] :z]]]
+          p (path-for routes :z :id "as/df?" :path "q/w/e/r")]
+      (is (= p "/foo/as%2Fdf%3F/q/w/e/r"))
+      (is (= {:handler :z
+              :route-params {:id "as/df?" :path "q/w/e/r"}}
+             (match-route routes p))))))
+
 (deftest keywords
   (let [routes ["/" [["foo/" :x]
                      [["foo/" [keyword :id]] :y]
